@@ -166,7 +166,7 @@ function ChatLayout() {
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
-        {activeThread ? (
+        {ready && activeThread ? (
           <ChatThreadsContext.Provider value={{ threads, onMessagesChange: handleMessagesChange }}>
             <Outlet />
           </ChatThreadsContext.Provider>
