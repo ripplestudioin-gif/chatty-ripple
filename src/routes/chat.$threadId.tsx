@@ -1,8 +1,8 @@
-import { createFileRoute, useOutletContext } from "@tanstack/react-router";
-import type { UIMessage } from "ai";
+import { createFileRoute } from "@tanstack/react-router";
+import { useContext } from "react";
 
 import { ChatWindow } from "@/components/ChatWindow";
-import type { RippleThread } from "@/lib/threads";
+import { ChatThreadsContext } from "./chat";
 
 export const Route = createFileRoute("/chat/$threadId")({
   head: () => ({
@@ -14,14 +14,12 @@ export const Route = createFileRoute("/chat/$threadId")({
   component: ThreadPage,
 });
 
-interface ChatOutletContext {
-  thread: RippleThread;
-  onMessagesChange: (threadId: string, messages: UIMessage[]) => void;
-}
-
 function ThreadPage() {
   const { threadId } = Route.useParams();
-  const { thread, onMessagesChange } = useOutletContext<ChatOutletContext>();
+  const { threads, onMessagesChange } = useContext(ChatThreadsContext);
+  const thread = threads.find((t) => t.id === threadId);
+
+  if (!thread) return null;
 
   return (
     <ChatWindow

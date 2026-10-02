@@ -1,6 +1,6 @@
 import { Link, Outlet, createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { MessageSquarePlus, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { createContext, useCallback, useEffect, useState } from "react";
 
 import rippleLogo from "@/assets/ripple-logo.png";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,16 @@ import type { UIMessage } from "ai";
 
 export const Route = createFileRoute("/chat")({
   component: ChatLayout,
+});
+
+export interface ChatThreadsContextValue {
+  threads: RippleThread[];
+  onMessagesChange: (threadId: string, messages: UIMessage[]) => void;
+}
+
+export const ChatThreadsContext = createContext<ChatThreadsContextValue>({
+  threads: [],
+  onMessagesChange: () => {},
 });
 
 function ChatLayout() {
@@ -34,10 +44,11 @@ function ChatLayout() {
 
   // If we're on /chat with no thread selected, open the most recent one.
   useEffect(() => {
-    if (!activeThreadId && threads.length > 0) {
+    const first = threads[0];
+    if (!activeThreadId && first) {
       void navigate({
         to: "/chat/$threadId",
-        params: { threadId: threads[0].id },
+        params: { threadId: first.id },
         replace: true,
       });
     }
@@ -62,8 +73,9 @@ function ChatLayout() {
       updateThreads((prev) => {
         const next = prev.filter((t) => t.id !== threadId);
         if (threadId === activeThreadId) {
-          if (next.length > 0) {
-            void navigate({ to: "/chat/$threadId", params: { threadId: next[0].id } });
+          const first = next[0];
+          if (first) {
+            void navigate({ to: "/chat/$threadId", params: { threadId: first.id } });
           } else {
             const fresh = createThread();
             void navigate({ to: "/chat/$threadId", params: { threadId: fresh.id } });
@@ -94,7 +106,7 @@ function ChatLayout() {
     [updateThreads],
   );
 
-  const activeThread = threads.find((t) => t.id === activeThreadId);
+  const activeThread = activeThreadId ? threads.find((t) => t.id === activeThreadId) : undefined;
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -142,14 +154,14 @@ function ChatLayout() {
             );
           })}
         </nav>
-        <p className="px-4 pb-3 text-xs text-muted-foreground">
-          Saved in this browser only.
-        </p>
+        <p className="px-4 pb-3 text-xs text-muted-foreground">Saved in this browser only.</p>
       </aside>
 
       <main className="flex min-w-0 flex-1 flex-col">
         {activeThread ? (
-          <Outlet context={{ thread: activeThread, onMessagesChange: handleMessagesChange }} />
+          <ChatThreadsContext.Provider value={{ threads, onMessagesChange: handleMessagesChange }}>
+            <Outlet />
+          </ChatThreadsContext.Provider>
         ) : (
           <div className="flex flex-1 items-center justify-center text-muted-foreground">
             Loading…
