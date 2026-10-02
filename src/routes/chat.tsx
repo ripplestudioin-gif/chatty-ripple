@@ -32,27 +32,35 @@ function ChatLayout() {
   const params = useParams({ strict: false }) as { threadId?: string };
   const activeThreadId = params.threadId;
 
-  // StrictMode-safe bootstrap: read storage once, create a default thread
-  // only when storage is empty, and write it back in the same pass.
-  const [threads, setThreads] = useState<RippleThread[]>(() => {
+  // Start empty so SSR and the first client render match (no hydration
+  // mismatch), then bootstrap from localStorage in an idempotent effect:
+  // a StrictMode second run sees the thread the first run already saved.
+  const [threads, setThreads] = useState<RippleThread[]>([]);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
     const existing = loadThreads();
-    if (existing.length > 0) return existing;
-    const first = createThread();
-    saveThreads([first]);
-    return [first];
-  });
+    if (existing.length > 0) {
+      setThreads(existing);
+    } else {
+      const first = createThread();
+      saveThreads([first]);
+      setThreads([first]);
+    }
+    setReady(true);
+  }, []);
 
   // If we're on /chat with no thread selected, open the most recent one.
   useEffect(() => {
     const first = threads[0];
-    if (!activeThreadId && first) {
+    if (ready && !activeThreadId && first) {
       void navigate({
         to: "/chat/$threadId",
         params: { threadId: first.id },
         replace: true,
       });
     }
-  }, [activeThreadId, threads, navigate]);
+  }, [ready, activeThreadId, threads, navigate]);
 
   const updateThreads = useCallback((updater: (prev: RippleThread[]) => RippleThread[]) => {
     setThreads((prev) => {
